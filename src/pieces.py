@@ -216,3 +216,68 @@ class ZPiece(Piece):
     
     def __init__(self):
         super().__init__(PieceType.Z)
+    
+    def _get_shapes(self):
+        return [
+            [
+                [1, 1, 0],
+                [0, 1, 1],
+                [0, 0, 0]
+            ],
+            [
+                [0, 0, 1],
+                [0, 1, 1],
+                [0, 1, 0]
+            ]
+        ]
+
+class HeartPiece(Piece):
+    """Pièce en forme de cœur"""
+    
+    def __init__(self):
+        super().__init__(PieceType.HEART)
+    
+    def _get_shapes(self):
+        return [
+            [
+                [0, 1, 0, 1, 0],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [0, 1, 1, 1, 0],
+                [0, 0, 1, 0, 0]
+            ]
+        ]
+
+class StarPiece(Piece):
+    """Pièce en forme d'étoile"""
+    
+    def __init__(self):
+        super().__init__(PieceType.STAR)
+    
+    def _get_shapes(self):
+        return [
+            [
+                [0, 0, 1, 0, 0],
+                [0, 1, 1, 1, 0],
+                [1, 1, 1, 1, 1],
+                [0, 1, 1, 1, 0],
+                [0, 0, 1, 0, 0]
+            ]
+        ]
+
+def get_random_piece(only_easy=False, special=False):
+    """Retourne une pièce aléatoire
+    
+    Args:
+        only_easy (bool): Si True, ne retourne que des pièces faciles (I et O)
+        special (bool): Si True, ne retourne que des pièces spéciales (cœur et étoile)
+    
+    Returns:
+        Piece: Une pièce aléatoire
+    """
+    if special:
+        return random.choice([HeartPiece(), StarPiece()])
+    elif only_easy:
+        return random.choice([IPiece(), OPiece()])
+    else:
+        return random.choice([IPiece(), JPiece(), LPiece(), OPiece(), SPiece(), TPiece(), ZPiece()])

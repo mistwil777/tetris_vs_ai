@@ -21,7 +21,7 @@ class Game:
         """Initialise une nouvelle partie de Tetris"""
         self.root = tk.Tk()
         self.root.title("Tetris à deux joueurs (Humain vs IA)")
-        self.root.configure(bg="#f0f0f0")
+        self.root.configure(bg="#2C3E50")
         
         # Initialisation des plateaux de jeu
         self.human_board = Board(width=10, height=20)
@@ -87,7 +87,9 @@ class Game:
         self.check_special_rules()
         
         # Fait tomber la pièce du joueur humain
-        if not self.move_human_piece(0, 1):
+        if self.can_move_piece(0, 1, self.human_current_piece, self.human_board):
+            self.move_human_piece(0, 1)
+        else:
             self.lock_human_piece()
         
         # Met à jour l'affichage
@@ -111,12 +113,12 @@ class Game:
             self.ai_current_piece.rotation = move["rotation"]
             
             # Fait tomber la pièce de l'IA
-            if not self.move_ai_piece(0, 1):
-                self.lock_ai_piece()
+            while self.can_move_piece(0, 1, self.ai_current_piece, self.ai_board):
+                self.ai_current_piece.y += 1
+            self.lock_ai_piece()
         else:
             # Si aucun mouvement valide n'est trouvé, on fait tomber la pièce
-            if not self.move_ai_piece(0, 1):
-                self.lock_ai_piece()
+            self.lock_ai_piece()
         
         # Met à jour l'affichage
         self.ui.update_display()
@@ -139,45 +141,36 @@ class Game:
         
         return speed
     
+    def can_move_piece(self, dx, dy, piece, board):
+        """Vérifie si un mouvement est possible pour une pièce"""
+        if not piece:
+            return False
+        
+        new_x = piece.x + dx
+        new_y = piece.y + dy
+        shape = piece.get_shape()
+        
+        for y, row in enumerate(shape):
+            for x, cell in enumerate(row):
+                if cell:
+                    board_x = new_x + x
+                    board_y = new_y + y
+                    if (board_x < 0 or board_x >= board.width or
+                        board_y >= board.height or
+                        (board_y >= 0 and board.grid[board_y][board_x])):
+                        return False
+        return True
+    
     def move_human_piece(self, dx, dy):
         """Déplace la pièce du joueur humain"""
         if not self.game_running or not self.human_current_piece:
             return False
         
-        # Sauvegarde la position actuelle
-        old_x, old_y = self.human_current_piece.x, self.human_current_piece.y
-        
-        # Essaye de déplacer la pièce
-        self.human_current_piece.x += dx
-        self.human_current_piece.y += dy
-        
-        # Vérifie si le mouvement est valide
-        if not self.human_board.is_valid_position(self.human_current_piece):
-            # Restaure la position si le mouvement est invalide
-            self.human_current_piece.x, self.human_current_piece.y = old_x, old_y
-            return False
-        
-        return True
-    
-    def move_ai_piece(self, dx, dy):
-        """Déplace la pièce de l'IA"""
-        if not self.game_running or not self.ai_current_piece:
-            return False
-        
-        # Sauvegarde la position actuelle
-        old_x, old_y = self.ai_current_piece.x, self.ai_current_piece.y
-        
-        # Essaye de déplacer la pièce
-        self.ai_current_piece.x += dx
-        self.ai_current_piece.y += dy
-        
-        # Vérifie si le mouvement est valide
-        if not self.ai_board.is_valid_position(self.ai_current_piece):
-            # Restaure la position si le mouvement est invalide
-            self.ai_current_piece.x, self.ai_current_piece.y = old_x, old_y
-            return False
-        
-        return True
+        if self.can_move_piece(dx, dy, self.human_current_piece, self.human_board):
+            self.human_current_piece.x += dx
+            self.human_current_piece.y += dy
+            return True
+        return False
     
     def rotate_human_piece(self):
         """Fait pivoter la pièce du joueur humain"""
@@ -191,7 +184,7 @@ class Game:
         self.human_current_piece.rotate()
         
         # Vérifie si la rotation est valide
-        if not self.human_board.is_valid_position(self.human_current_piece):
+        if not self.can_move_piece(0, 0, self.human_current_piece, self.human_board):
             # Restaure la rotation si elle est invalide
             self.human_current_piece.rotation = old_rotation
             return False
@@ -216,9 +209,17 @@ class Game:
             return
         
         # Ajoute la pièce au plateau
-        cleared_lines = self.human_board.add_piece(self.human_current_piece)
+        shape = self.human_current_piece.get_shape()
+        for y, row in enumerate(shape):
+            for x, cell in enumerate(row):
+                if cell:
+                    board_x = self.human_current_piece.x + x
+                    board_y = self.human_current_piece.y + y
+                    if 0 <= board_y < self.human_board.height and 0 <= board_x < self.human_board.width:
+                        self.human_board.grid[board_y][board_x] = self.human_current_piece.color
         
-        # Met à jour le score
+        # Efface les lignes complètes et met à jour le score
+        cleared_lines = self.human_board.clear_lines()
         self.update_score("human", cleared_lines)
         
         # Vérifie les règles spéciales
@@ -229,7 +230,7 @@ class Game:
         self.human_next_piece = get_random_piece()
         
         # Vérifie si la partie est terminée
-        if not self.human_board.is_valid_position(self.human_current_piece):
+        if not self.can_move_piece(0, 0, self.human_current_piece, self.human_board):
             self.game_over("ai")
     
     def lock_ai_piece(self):
@@ -238,9 +239,17 @@ class Game:
             return
         
         # Ajoute la pièce au plateau
-        cleared_lines = self.ai_board.add_piece(self.ai_current_piece)
+        shape = self.ai_current_piece.get_shape()
+        for y, row in enumerate(shape):
+            for x, cell in enumerate(row):
+                if cell:
+                    board_x = self.ai_current_piece.x + x
+                    board_y = self.ai_current_piece.y + y
+                    if 0 <= board_y < self.ai_board.height and 0 <= board_x < self.ai_board.width:
+                        self.ai_board.grid[board_y][board_x] = self.ai_current_piece.color
         
-        # Met à jour le score
+        # Efface les lignes complètes et met à jour le score
+        cleared_lines = self.ai_board.clear_lines()
         self.update_score("ai", cleared_lines)
         
         # Vérifie les règles spéciales
@@ -251,61 +260,43 @@ class Game:
         self.ai_next_piece = get_random_piece()
         
         # Vérifie si la partie est terminée
-        if not self.ai_board.is_valid_position(self.ai_current_piece):
+        if not self.can_move_piece(0, 0, self.ai_current_piece, self.ai_board):
             self.game_over("human")
     
     def update_score(self, player, cleared_lines):
         """Met à jour le score d'un joueur en fonction des lignes effacées"""
+        score = 0
+        if cleared_lines == 1:
+            score = 50
+        elif cleared_lines == 2:
+            score = 150  # 50*2 + 50 (bonus)
+        elif cleared_lines == 3:
+            score = 350  # 50*3 + 200 (bonus)
+        elif cleared_lines == 4:
+            score = 500  # 50*4 + 300 (bonus)
+        
         if player == "human":
-            # Score de base
-            if cleared_lines == 1:
-                self.human_score += 50
-            elif cleared_lines == 2:
-                self.human_score += 150  # 50*2 + 50 (bonus)
-            elif cleared_lines == 3:
-                self.human_score += 350  # 50*3 + 200 (bonus)
-            elif cleared_lines == 4:
-                self.human_score += 500  # 50*4 + 300 (bonus)
+            self.human_score += score
             
             # Vérifie si on active la "Pause douceur"
-            if self.human_score // 1000 > (self.human_score - self.calculate_score(cleared_lines)) // 1000:
+            if self.human_score // 1000 > (self.human_score - score) // 1000:
                 self.activate_pause_douceur("human")
                 self.activate_pause_douceur("ai")
             
             # Vérifie si on active la "Pièce rigolote"
-            if self.human_score // 3000 > (self.human_score - self.calculate_score(cleared_lines)) // 3000:
+            if self.human_score // 3000 > (self.human_score - score) // 3000:
                 self.activate_funny_piece("human")
         else:
-            # Score de base
-            if cleared_lines == 1:
-                self.ai_score += 50
-            elif cleared_lines == 2:
-                self.ai_score += 150  # 50*2 + 50 (bonus)
-            elif cleared_lines == 3:
-                self.ai_score += 350  # 50*3 + 200 (bonus)
-            elif cleared_lines == 4:
-                self.ai_score += 500  # 50*4 + 300 (bonus)
+            self.ai_score += score
             
             # Vérifie si on active la "Pause douceur"
-            if self.ai_score // 1000 > (self.ai_score - self.calculate_score(cleared_lines)) // 1000:
+            if self.ai_score // 1000 > (self.ai_score - score) // 1000:
                 self.activate_pause_douceur("ai")
                 self.activate_pause_douceur("human")
             
             # Vérifie si on active la "Pièce rigolote"
-            if self.ai_score // 3000 > (self.ai_score - self.calculate_score(cleared_lines)) // 3000:
+            if self.ai_score // 3000 > (self.ai_score - score) // 3000:
                 self.activate_funny_piece("ai")
-    
-    def calculate_score(self, cleared_lines):
-        """Calcule le score en fonction du nombre de lignes effacées"""
-        if cleared_lines == 1:
-            return 50
-        elif cleared_lines == 2:
-            return 150
-        elif cleared_lines == 3:
-            return 350
-        elif cleared_lines == 4:
-            return 500
-        return 0
     
     def check_gift_rule(self, player, cleared_lines):
         """Vérifie et applique la règle "Cadeau surprise" si nécessaire"""
@@ -371,6 +362,9 @@ class Game:
         self.human_board = Board(width=10, height=20)
         self.ai_board = Board(width=10, height=20)
         
+        # CORRECTION: Réinitialise l'IA avec le nouveau plateau
+        self.ai = AI(self.ai_board)
+        
         # Réinitialise les scores
         self.human_score = 0
         self.ai_score = 0
@@ -385,6 +379,9 @@ class Game:
         self.rainbow_mode = False
         self.pause_douceur_active = {"human": False, "ai": False}
         self.last_rainbow_time = time.time()
+        
+        # Cache l'écran de game over si nécessaire
+        self.ui.hide_game_over()
         
         # Reprend le jeu
         self.game_running = True

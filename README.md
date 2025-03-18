@@ -25,7 +25,7 @@ Ce jeu combine le gameplay classique de Tetris avec des règles amusantes pour r
 
 1. Clonez ce dépôt :
 
-git clone https://github.com/votre-username/tetris-vs-ia.git
+git clone https://github.com/mistwil777/tetris-vs-ia.git
 
 cd tetris-vs-ia
 
