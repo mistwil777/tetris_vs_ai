@@ -90,7 +90,7 @@ L'intelligence artificielle utilise un algorithme qui évalue plusieurs facteurs
 - Lignes potentiellement complétées
 
 ## 👨‍💻 Structure du projet
-
+```
 tetris_vs_ia/
 ├── assets/ # Ressources graphiques
 ├── src/ # Code source
@@ -104,7 +104,7 @@ tetris_vs_ia/
 │ └── utils.py # Fonctions utilitaires
 ├── README.md # Ce fichier
 └── PROMPTS.md # Documentation des prompts utilisés
-
+```
 
 ## 🌟 À propos
 
