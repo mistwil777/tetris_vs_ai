@@ -2,31 +2,36 @@
 # -*- coding: utf-8 -*-
 
 """
-Interface utilisateur pour le jeu Tetris
-Utilise Tkinter pour afficher le jeu et gérer les interactions
+Interface utilisateur pour le jeu Tetris avec effets visuels améliorés
+Utilise CustomTkinter pour un design moderne avec coins arrondis et effets 3D
 """
 
 import tkinter as tk
 from tkinter import font as tkfont
 import time
 import random
+import customtkinter as ctk
 from src.utils import get_rainbow_colors, format_time
 
 class UI:
-    """Interface utilisateur du jeu Tetris"""
+    """Interface utilisateur du jeu Tetris avec effets visuels améliorés"""
     
     def __init__(self, root, game):
         """Initialise l'interface utilisateur
         
         Args:
-            root: Fenêtre principale Tkinter
+            root: Fenêtre principale CustomTkinter
             game: Instance du jeu
         """
         self.root = root
         self.game = game
         
-        # La taille des cellules sera calculée dynamiquement
-        self.cell_size = 18  # Taille de départ plus petite
+        # Configuration du thème CustomTkinter
+        ctk.set_appearance_mode("dark")  # Modes: "dark", "light"
+        ctk.set_default_color_theme("blue")  # Thèmes: "blue", "green", "dark-blue"
+        
+        # Taille initiale des cellules (réduite pour assurer la visibilité complète)
+        self.cell_size = 16
         
         # Configure la fenêtre principale
         screen_width = self.root.winfo_screenwidth()
@@ -41,7 +46,7 @@ class UI:
         y_position = (screen_height - window_height) // 2
         
         self.root.geometry(f"{window_width}x{window_height}+{x_position}+{y_position}")
-        self.root.minsize(800, 600)
+        self.root.minsize(900, 650)  # Taille minimale augmentée pour assurer la visibilité
         
         # Couleurs de l'interface
         self.colors = {
@@ -55,14 +60,8 @@ class UI:
             "button_bg": "#6272A4",         # Fond des boutons
             "button_fg": "#F8F8F2",         # Texte des boutons
             "board_bg": "#282A36",          # Fond du plateau de jeu
+            "shadow": "#191A21",            # Couleur des ombres
         }
-        
-        # Crée un style de police personnalisé
-        self.title_font = tkfont.Font(family="Helvetica", size=24, weight="bold")
-        self.section_font = tkfont.Font(family="Helvetica", size=16, weight="bold")
-        self.score_font = tkfont.Font(family="Helvetica", size=14)
-        self.info_font = tkfont.Font(family="Helvetica", size=12)
-        self.game_over_font = tkfont.Font(family="Helvetica", size=36, weight="bold")
         
         # Crée les éléments de l'interface
         self.create_ui_elements()
@@ -71,199 +70,223 @@ class UI:
         self.root.bind("<Configure>", self.on_resize)
     
     def create_ui_elements(self):
-        """Crée les éléments de l'interface utilisateur"""
-        # Utilisation d'un gestionnaire de mise en page grid pour un meilleur redimensionnement
-        self.main_frame = tk.Frame(self.root, bg=self.colors["bg_main"])
-        self.main_frame.pack(fill=tk.BOTH, expand=True)
+        """Crée les éléments de l'interface utilisateur avec coins arrondis et effet 3D"""
+        # Structure principale
+        self.main_frame = ctk.CTkFrame(self.root, corner_radius=0, fg_color=self.colors["bg_main"])
+        self.main_frame.pack(fill="both", expand=True)
         
-        # Configuration des poids pour permettre un redimensionnement correct
-        self.main_frame.columnconfigure(0, weight=1)  # Colonne joueur
-        self.main_frame.columnconfigure(1, weight=1)  # Colonne IA
-        self.main_frame.columnconfigure(2, weight=0)  # Colonne informations (taille fixe)
+        # Configuration du système de grille
+        self.main_frame.columnconfigure(0, weight=1)
+        self.main_frame.columnconfigure(1, weight=1)
+        self.main_frame.columnconfigure(2, weight=0)
+        self.main_frame.rowconfigure(0, weight=0)  # Titre (fixe)
+        self.main_frame.rowconfigure(1, weight=1)  # Plateaux de jeu (extensible)
         
-        self.main_frame.rowconfigure(0, weight=0)  # Ligne titre (fixe)
-        self.main_frame.rowconfigure(1, weight=1)  # Ligne plateaux de jeu (redimensionnable)
+        # Titre avec effet 3D
+        self.title_frame = ctk.CTkFrame(
+            self.main_frame, 
+            corner_radius=15, 
+            fg_color=self.colors["bg_main"],
+            border_width=0
+        )
+        self.title_frame.grid(row=0, column=0, columnspan=3, sticky="ew", padx=20, pady=5)  # Padding réduit en haut
         
-        # Titre
-        self.title_frame = tk.Frame(self.main_frame, bg=self.colors["bg_main"], padx=10, pady=5)
-        self.title_frame.grid(row=0, column=0, columnspan=3, sticky="ew")
-        
-        self.title_label = tk.Label(
+        self.title_label = ctk.CTkLabel(
             self.title_frame, 
             text="TETRIS DUEL", 
-            font=self.title_font, 
-            bg=self.colors["bg_main"],
-            fg=self.colors["accent"]
+            font=ctk.CTkFont(family="Helvetica", size=24, weight="bold"),
+            text_color=self.colors["accent"]
         )
         self.title_label.pack(pady=(5, 0))
         
-        self.subtitle_label = tk.Label(
+        self.subtitle_label = ctk.CTkLabel(
             self.title_frame, 
             text="Humain vs Intelligence Artificielle", 
-            font=self.section_font, 
-            bg=self.colors["bg_main"],
-            fg=self.colors["text_title"]
+            font=ctk.CTkFont(family="Helvetica", size=16, weight="bold"),
+            text_color=self.colors["text_title"]
         )
         self.subtitle_label.pack(pady=(0, 5))
-        
-        # Section du joueur humain
-        self.human_section = tk.Frame(self.main_frame, bg=self.colors["bg_main"])
-        self.human_section.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
-        
-        # Pour que le contenu s'adapte à la taille disponible
-        self.human_section.rowconfigure(0, weight=0)  # Score et prochaine pièce (fixe)
-        self.human_section.rowconfigure(1, weight=1)  # Plateau (redimensionnable)
-        self.human_section.columnconfigure(0, weight=1)
-        
-        # Section de l'IA
-        self.ai_section = tk.Frame(self.main_frame, bg=self.colors["bg_main"])
-        self.ai_section.grid(row=1, column=1, sticky="nsew", padx=10, pady=5)
-        
-        # Pour que le contenu s'adapte à la taille disponible
-        self.ai_section.rowconfigure(0, weight=0)  # Score et prochaine pièce (fixe)
-        self.ai_section.rowconfigure(1, weight=1)  # Plateau (redimensionnable)
-        self.ai_section.columnconfigure(0, weight=1)
-        
-        # Panneau d'information
-        self.info_panel = tk.Frame(self.main_frame, bg=self.colors["bg_main"])
-        self.info_panel.grid(row=1, column=2, sticky="ns", padx=10, pady=5)
-        
-        # Informations du joueur humain
-        self.human_info = tk.Frame(self.human_section, bg=self.colors["bg_panel"], padx=10, pady=5)
-        self.human_info.grid(row=0, column=0, sticky="ew")
-        
-        self.human_label = tk.Label(
-            self.human_info, 
-            text="JOUEUR", 
-            font=self.section_font, 
-            bg=self.colors["bg_panel"],
-            fg=self.colors["accent"]
+
+        # Section du joueur humain avec coins arrondis
+        self.human_section = self.create_3d_frame(
+            self.main_frame, 
+            row=1, 
+            column=0, 
+            title="JOUEUR", 
+            corner_radius=20
         )
-        self.human_label.pack(side=tk.LEFT, padx=(0, 10))
         
-        self.human_score_label = tk.Label(
-            self.human_info, 
+        # Section pour le score et la prochaine pièce du joueur humain
+        self.human_info_container = ctk.CTkFrame(
+            self.human_section, 
+            corner_radius=15, 
+            fg_color=self.colors["bg_panel"],
+            border_width=1,
+            border_color=self.colors["accent"]
+        )
+        self.human_info_container.pack(fill="x", padx=10, pady=(5, 5))  # Padding vertical réduit
+        
+        self.human_score_label = ctk.CTkLabel(
+            self.human_info_container, 
             text="Score: 0", 
-            font=self.score_font, 
-            bg=self.colors["bg_panel"],
-            fg=self.colors["text_normal"]
+            font=ctk.CTkFont(family="Helvetica", size=14),
+            text_color=self.colors["text_normal"]
         )
-        self.human_score_label.pack(side=tk.LEFT, padx=10)
+        self.human_score_label.pack(side="left", padx=10, pady=5)
         
-        self.human_next_frame = tk.Frame(
-            self.human_info,
-            bg=self.colors["accent"],
-            padx=2,
-            pady=2
+        self.human_next_frame = ctk.CTkFrame(
+            self.human_info_container,
+            corner_radius=10,
+            fg_color=self.colors["accent"],
+            border_width=0
         )
-        self.human_next_frame.pack(side=tk.RIGHT, padx=(10, 0))
+        self.human_next_frame.pack(side="right", padx=10, pady=5)
         
         self.human_next_canvas = tk.Canvas(
             self.human_next_frame, 
             width=self.cell_size * 4,
             height=self.cell_size * 4,
-            bg=self.colors["board_bg"]
+            bg=self.colors["board_bg"],
+            highlightthickness=0
         )
-        self.human_next_canvas.pack()
+        self.human_next_canvas.pack(padx=2, pady=2)
         
-        # Plateau du joueur humain
-        self.human_board_container = tk.Frame(
+        # Plateau du joueur humain (Canvas traditionnel pour le jeu)
+        self.human_board_container = ctk.CTkFrame(
             self.human_section,
-            bg=self.colors["bg_main"],
-            padx=5,
-            pady=5
+            corner_radius=0,
+            fg_color=self.colors["bg_panel"],
+            border_width=0
         )
-        self.human_board_container.grid(row=1, column=0, sticky="nsew")
+        # Augmenter l'expansion pour maximiser l'espace disponible
+        self.human_board_container.pack(fill="both", expand=True, padx=5, pady=5)
         
-        self.human_board_container.rowconfigure(0, weight=1)
-        self.human_board_container.columnconfigure(0, weight=1)
-        
-        self.human_board_frame = tk.Frame(
+        # Effet d'ombre pour le plateau (3D)
+        self.human_shadow_frame = ctk.CTkFrame(
             self.human_board_container,
-            bg=self.colors["accent"],
-            padx=2,
-            pady=2
+            corner_radius=15,
+            fg_color=self.colors["shadow"],
+            border_width=0
         )
-        self.human_board_frame.place(relx=0.5, rely=0.5, anchor="center")
+        # Position ajustée pour garantir la visibilité complète
+        self.human_shadow_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.95, relheight=0.95, x=5, y=5)
         
+        # Cadre du plateau avec bordure réduite
+        self.human_board_frame = ctk.CTkFrame(
+            self.human_board_container,
+            corner_radius=15,
+            fg_color=self.colors["accent"],
+            border_width=0
+        )
+        self.human_board_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.95, relheight=0.95)
+        
+        # Canvas standard pour le plateau de jeu avec padding réduit
         self.human_canvas = tk.Canvas(
             self.human_board_frame, 
             width=self.cell_size * self.game.human_board.width,
             height=self.cell_size * self.game.human_board.height,
-            bg=self.colors["board_bg"]
+            bg=self.colors["board_bg"],
+            highlightthickness=0
         )
-        self.human_canvas.pack()
+        self.human_canvas.pack(padx=3, pady=3)  # Padding réduit
         
-        # Informations de l'IA
-        self.ai_info = tk.Frame(self.ai_section, bg=self.colors["bg_panel"], padx=10, pady=5)
-        self.ai_info.grid(row=0, column=0, sticky="ew")
-        
-        self.ai_label = tk.Label(
-            self.ai_info, 
-            text="IA", 
-            font=self.section_font, 
-            bg=self.colors["bg_panel"],
-            fg=self.colors["accent"]
+        # Section de l'IA avec coins arrondis
+        self.ai_section = self.create_3d_frame(
+            self.main_frame, 
+            row=1, 
+            column=1, 
+            title="INTELLIGENCE ARTIFICIELLE", 
+            corner_radius=20
         )
-        self.ai_label.pack(side=tk.LEFT, padx=(0, 10))
         
-        self.ai_score_label = tk.Label(
-            self.ai_info, 
+        # Score et prochaine pièce de l'IA
+        self.ai_info_container = ctk.CTkFrame(
+            self.ai_section, 
+            corner_radius=15, 
+            fg_color=self.colors["bg_panel"],
+            border_width=1,
+            border_color=self.colors["accent"]
+        )
+        self.ai_info_container.pack(fill="x", padx=10, pady=(5, 5))  # Padding vertical réduit
+        
+        self.ai_score_label = ctk.CTkLabel(
+            self.ai_info_container, 
             text="Score: 0", 
-            font=self.score_font, 
-            bg=self.colors["bg_panel"],
-            fg=self.colors["text_normal"]
+            font=ctk.CTkFont(family="Helvetica", size=14),
+            text_color=self.colors["text_normal"]
         )
-        self.ai_score_label.pack(side=tk.LEFT, padx=10)
+        self.ai_score_label.pack(side="left", padx=10, pady=5)
         
-        self.ai_next_frame = tk.Frame(
-            self.ai_info,
-            bg=self.colors["accent"],
-            padx=2,
-            pady=2
+        self.ai_next_frame = ctk.CTkFrame(
+            self.ai_info_container,
+            corner_radius=10,
+            fg_color=self.colors["accent"],
+            border_width=0
         )
-        self.ai_next_frame.pack(side=tk.RIGHT, padx=(10, 0))
+        self.ai_next_frame.pack(side="right", padx=10, pady=5)
         
         self.ai_next_canvas = tk.Canvas(
             self.ai_next_frame, 
             width=self.cell_size * 4,
             height=self.cell_size * 4,
-            bg=self.colors["board_bg"]
+            bg=self.colors["board_bg"],
+            highlightthickness=0
         )
-        self.ai_next_canvas.pack()
+        self.ai_next_canvas.pack(padx=2, pady=2)
         
         # Plateau de l'IA
-        self.ai_board_container = tk.Frame(
+        self.ai_board_container = ctk.CTkFrame(
             self.ai_section,
-            bg=self.colors["bg_main"],
-            padx=5,
-            pady=5
+            corner_radius=0,
+            fg_color=self.colors["bg_panel"],
+            border_width=0
         )
-        self.ai_board_container.grid(row=1, column=0, sticky="nsew")
+        # Augmenter l'expansion pour maximiser l'espace disponible
+        self.ai_board_container.pack(fill="both", expand=True, padx=5, pady=5)
         
-        self.ai_board_container.rowconfigure(0, weight=1)
-        self.ai_board_container.columnconfigure(0, weight=1)
-        
-        self.ai_board_frame = tk.Frame(
+        # Effet d'ombre pour le plateau de l'IA (3D)
+        self.ai_shadow_frame = ctk.CTkFrame(
             self.ai_board_container,
-            bg=self.colors["accent"],
-            padx=2,
-            pady=2
+            corner_radius=15,
+            fg_color=self.colors["shadow"],
+            border_width=0
         )
-        self.ai_board_frame.place(relx=0.5, rely=0.5, anchor="center")
+        # Position ajustée pour garantir la visibilité complète
+        self.ai_shadow_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.95, relheight=0.95, x=5, y=5)
         
+        # Cadre du plateau avec bordure réduite
+        self.ai_board_frame = ctk.CTkFrame(
+            self.ai_board_container,
+            corner_radius=15,
+            fg_color=self.colors["accent"],
+            border_width=0
+        )
+        self.ai_board_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.95, relheight=0.95)
+        
+        # Canvas standard pour le plateau de jeu avec padding réduit
         self.ai_canvas = tk.Canvas(
             self.ai_board_frame, 
             width=self.cell_size * self.game.ai_board.width,
             height=self.cell_size * self.game.ai_board.height,
-            bg=self.colors["board_bg"]
+            bg=self.colors["board_bg"],
+            highlightthickness=0
         )
-        self.ai_canvas.pack()
+        self.ai_canvas.pack(padx=3, pady=3)  # Padding réduit
+        
+        # Panneau d'information avec coins arrondis
+        self.info_panel = ctk.CTkFrame(
+            self.main_frame,
+            corner_radius=20,
+            fg_color=self.colors["bg_main"],
+            border_width=0
+        )
+        self.info_panel.grid(row=1, column=2, padx=10, pady=10, sticky="ns")
         
         # Règles spéciales
-        self.rules_frame = self.create_panel(
-            self.info_panel, "RÈGLES SPÉCIALES", 0, 0, pady=(0, 15)
+        self.rules_frame = self.create_info_panel(
+            self.info_panel, "RÈGLES SPÉCIALES", 15
         )
+        self.rules_frame.pack(fill="x", padx=5, pady=5)
         
         # Indicateurs des règles
         self.create_rule_indicator(
@@ -280,9 +303,10 @@ class UI:
         )
         
         # Contrôles
-        self.controls_frame = self.create_panel(
-            self.info_panel, "CONTRÔLES", 1, 0, pady=(15, 0)
+        self.controls_frame = self.create_info_panel(
+            self.info_panel, "CONTRÔLES", 15
         )
+        self.controls_frame.pack(fill="x", padx=5, pady=(15, 5))
         
         controls_text = """
         ⬅️ ➡️: Déplacer
@@ -293,17 +317,14 @@ class UI:
         R: Recommencer
         """
         
-        self.controls_text = tk.Label(
+        self.controls_text = ctk.CTkLabel(
             self.controls_frame, 
             text=controls_text.strip(), 
-            font=self.info_font, 
-            bg=self.colors["bg_panel"],
-            fg=self.colors["text_normal"],
-            justify=tk.LEFT,
-            padx=10,
-            pady=5
+            font=ctk.CTkFont(family="Helvetica", size=12),
+            text_color=self.colors["text_normal"],
+            justify="left"
         )
-        self.controls_text.pack(fill=tk.BOTH, expand=True)
+        self.controls_text.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Canvas de game over (initialement caché)
         self.game_over_canvas = tk.Canvas(
@@ -318,48 +339,88 @@ class UI:
         self.root.update_idletasks()
         self.calculate_cell_size()
     
-    def create_panel(self, parent, title, row, column, padx=(0, 0), pady=(0, 0)):
-        """Crée un panneau avec un titre
+    def create_3d_frame(self, parent, row, column, title, corner_radius=15):
+        """Crée un cadre avec effet 3D en utilisant une ombre
+        
+        Args:
+            parent: Widget parent
+            row, column: Position dans la grille
+            title: Titre du cadre
+            corner_radius: Rayon des coins arrondis
+            
+        Returns:
+            CTkFrame: Le cadre créé
+        """
+        # Cadre principal avec ombre
+        frame = ctk.CTkFrame(
+            parent,
+            corner_radius=corner_radius,
+            fg_color=self.colors["bg_panel"],
+            border_width=2,
+            border_color=self.colors["accent"]
+        )
+        frame.grid(row=row, column=column, padx=10, pady=5, sticky="nsew")  # Padding vertical réduit
+        
+        if title:
+            title_label = ctk.CTkLabel(
+                frame,
+                text=title,
+                font=ctk.CTkFont(family="Helvetica", size=16, weight="bold"),
+                text_color=self.colors["accent"]
+            )
+            title_label.pack(pady=5)  # Padding vertical réduit
+        
+        return frame
+    
+    def create_info_panel(self, parent, title, corner_radius=10):
+        """Crée un panneau d'information avec effet 3D
         
         Args:
             parent: Widget parent
             title: Titre du panneau
-            row, column: Position dans la grille
-            padx, pady: Padding
-        
+            corner_radius: Rayon des coins arrondis
+            
         Returns:
-            tk.Frame: Le cadre créé
+            CTkFrame: Le cadre créé
         """
-        # Cadre externe avec bordure colorée
-        outer_frame = tk.Frame(
-            parent, 
-            bg=self.colors["accent"],
-            padx=2,
-            pady=2,
-            bd=0
+        # Cadre d'ombre
+        shadow_frame = ctk.CTkFrame(
+            parent,
+            corner_radius=corner_radius,
+            fg_color=self.colors["shadow"],
+            border_width=0
         )
-        outer_frame.grid(row=row, column=column, padx=padx, pady=pady, sticky="ew")
+        shadow_frame.pack(fill="x", padx=5, pady=5)
         
-        # Cadre interne
-        frame = tk.Frame(
-            outer_frame, 
-            bg=self.colors["bg_panel"],
-            padx=10,
-            pady=10
+        # Cadre extérieur
+        outer_frame = ctk.CTkFrame(
+            shadow_frame,
+            corner_radius=corner_radius,
+            fg_color=self.colors["accent"],
+            border_width=0
         )
-        frame.pack(fill=tk.BOTH, expand=True)
+        outer_frame.pack(fill="x", padx=0, pady=0)
+        
+        # Cadre intérieur
+        inner_frame = ctk.CTkFrame(
+            outer_frame,
+            corner_radius=corner_radius-2,
+            fg_color=self.colors["bg_panel"],
+            border_width=0
+        )
+        inner_frame.pack(fill="both", expand=True, padx=2, pady=2)
         
         # Titre
-        title_label = tk.Label(
-            frame, 
-            text=title, 
-            font=self.section_font, 
-            bg=self.colors["bg_panel"],
-            fg=self.colors["accent"]
-        )
-        title_label.pack(pady=(0, 10))
+        if title:
+            title_label = ctk.CTkLabel(
+                inner_frame,
+                text=title,
+                font=ctk.CTkFont(family="Helvetica", size=16, weight="bold"),
+                text_color=self.colors["accent"]
+            )
+            title_label.pack(pady=(5, 5))  # Padding vertical réduit
         
-        return frame
+        return inner_frame
     
     def create_rule_indicator(self, parent, text, emoji, attr_name):
         """Crée un indicateur de règle
@@ -370,26 +431,24 @@ class UI:
             emoji: Emoji à afficher
             attr_name: Nom de l'attribut pour stocker le widget
         """
-        frame = tk.Frame(parent, bg=self.colors["bg_panel"])
-        frame.pack(fill=tk.X, pady=(5, 5))
+        frame = ctk.CTkFrame(parent, fg_color=self.colors["bg_panel"])
+        frame.pack(fill="x", pady=(5, 5))
         
-        emoji_label = tk.Label(
+        emoji_label = ctk.CTkLabel(
             frame, 
             text=emoji + " ", 
-            font=self.info_font, 
-            bg=self.colors["bg_panel"],
-            fg=self.colors["text_normal"]
+            font=ctk.CTkFont(family="Helvetica", size=12),
+            text_color=self.colors["text_normal"]
         )
-        emoji_label.pack(side=tk.LEFT)
+        emoji_label.pack(side="left", padx=(10, 0))
         
-        indicator = tk.Label(
+        indicator = ctk.CTkLabel(
             frame, 
             text=f"{text}: Inactif", 
-            font=self.info_font, 
-            bg=self.colors["bg_panel"],
-            fg=self.colors["text_normal"]
+            font=ctk.CTkFont(family="Helvetica", size=12),
+            text_color=self.colors["text_normal"]
         )
-        indicator.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        indicator.pack(side="left", fill="x", expand=True)
         
         setattr(self, attr_name, indicator)
     
@@ -403,20 +462,22 @@ class UI:
         human_container_width = self.human_board_container.winfo_width()
         
         # Calculer la taille maximale possible des cellules (largeur et hauteur)
-        max_cell_width = human_container_width / self.game.human_board.width
-        max_cell_height = human_container_height / self.game.human_board.height
+        # Réduire la largeur et la hauteur utilisables pour tenir compte des marges et bordures
+        available_width = human_container_width * 0.9
+        available_height = human_container_height * 0.9
+        
+        max_cell_width = available_width / self.game.human_board.width
+        max_cell_height = available_height / self.game.human_board.height
         
         # Prendre la plus petite des deux valeurs pour que tout le plateau tienne
-        new_cell_size = min(max_cell_width, max_cell_height) * 0.9  # 90% pour laisser une marge
+        # Réduire encore de 5% pour garantir la visibilité de la dernière ligne
+        new_cell_size = min(max_cell_width, max_cell_height) * 0.95
         
-        # Limiter la taille minimale et maximale
-        self.cell_size = min(max(12, new_cell_size), 25)
+        # Limiter la taille minimale et maximale (taille max réduite pour assurer la visibilité)
+        self.cell_size = min(max(10, new_cell_size), 22)
         
         # Mettre à jour les dimensions des canvas
         self.update_canvas_sizes()
-        
-        # Repositionner les plateaux au centre de leurs conteneurs
-        self.update_board_positions()
     
     def update_canvas_sizes(self):
         """Met à jour les dimensions des canvas en fonction de la taille des cellules"""
@@ -432,16 +493,6 @@ class UI:
         self.human_next_canvas.config(width=next_piece_size, height=next_piece_size)
         self.ai_next_canvas.config(width=next_piece_size, height=next_piece_size)
     
-    def update_board_positions(self):
-        """Repositionne les plateaux de jeu au centre de leurs conteneurs"""
-        # Mettre à jour les cadres des plateaux
-        self.human_board_frame.update_idletasks()
-        self.ai_board_frame.update_idletasks()
-        
-        # Mise à jour des positions avec place pour centrer
-        self.human_board_frame.place(relx=0.5, rely=0.5, anchor="center")
-        self.ai_board_frame.place(relx=0.5, rely=0.5, anchor="center")
-    
     def on_resize(self, event):
         """Gère le redimensionnement de la fenêtre"""
         # Ne réagir qu'aux événements de redimensionnement de la fenêtre principale
@@ -455,8 +506,8 @@ class UI:
     def update_display(self):
         """Met à jour l'affichage du jeu"""
         # Met à jour les scores
-        self.human_score_label.config(text=f"Score: {self.game.human_score}")
-        self.ai_score_label.config(text=f"Score: {self.game.ai_score}")
+        self.human_score_label.configure(text=f"Score: {self.game.human_score}")
+        self.ai_score_label.configure(text=f"Score: {self.game.ai_score}")
         
         # Met à jour les plateaux
         self.update_board(self.human_canvas, self.game.human_board, self.game.human_current_piece)
@@ -532,9 +583,17 @@ class UI:
                 board.width * self.cell_size, y * self.cell_size, 
                 fill=self.colors["grid_line"], width=1
             )
+            
+        # Dessine une bordure autour du plateau pour mieux le délimiter
+        canvas.create_rectangle(
+            0, 0, 
+            board.width * self.cell_size, 
+            board.height * self.cell_size,
+            outline=self.colors["accent"], width=1
+        )
     
     def draw_cell(self, canvas, x, y, color):
-        """Dessine une cellule sur un canvas
+        """Dessine une cellule sur un canvas avec effet 3D
         
         Args:
             canvas: Canvas sur lequel dessiner
@@ -555,9 +614,9 @@ class UI:
         )
         
         # Effet 3D simplifié adapté à des cellules plus petites
-        border_width = max(1, int(self.cell_size * 0.1))
+        border_width = max(1, int(self.cell_size * 0.08))  # Bordure plus fine
         
-        # Bord clair (haut et gauche)
+        # Bord clair (haut et gauche) - effet 3D
         canvas.create_line(
             x1, y1, x2, y1,
             fill=self.lighten_color(color), width=border_width
@@ -567,7 +626,7 @@ class UI:
             fill=self.lighten_color(color), width=border_width
         )
         
-        # Bord sombre (bas et droite)
+        # Bord sombre (bas et droite) - effet 3D
         canvas.create_line(
             x1, y2, x2, y2,
             fill=self.darken_color(color), width=border_width
@@ -576,6 +635,16 @@ class UI:
             x2, y1, x2, y2,
             fill=self.darken_color(color), width=border_width
         )
+        
+        # Effet de profondeur simplifié pour petites cellules
+        if self.cell_size > 14:  # Seulement pour les cellules assez grandes
+            padding = self.cell_size * 0.2
+            canvas.create_rectangle(
+                x1 + padding, y1 + padding,
+                x2 - padding, y2 - padding,
+                fill=self.lighten_color(color, amount=0.1),
+                outline=""
+            )
     
     def lighten_color(self, hex_color, amount=0.3):
         """Éclaircit une couleur hexadécimale
@@ -666,46 +735,46 @@ class UI:
         # Arc-en-ciel
         if self.game.rainbow_mode:
             remaining_time = max(0, self.game.rainbow_end_time - time.time())
-            self.rainbow_indicator.config(
+            self.rainbow_indicator.configure(
                 text=f"Arc-en-ciel: Actif ({remaining_time:.1f}s)",
-                fg=self.colors["highlight"]
+                text_color=self.colors["highlight"]
             )
         else:
             next_rainbow = max(0, 120 - (time.time() - self.game.last_rainbow_time))
-            self.rainbow_indicator.config(
+            self.rainbow_indicator.configure(
                 text=f"Arc-en-ciel: {format_time(next_rainbow)}",
-                fg=self.colors["text_normal"]
+                text_color=self.colors["text_normal"]
             )
         
         # Pause douceur
         if self.game.pause_douceur_active["human"] or self.game.pause_douceur_active["ai"]:
             remaining_time = max(0, max(self.game.pause_douceur_end_time.values()) - time.time())
-            self.pause_douceur_indicator.config(
+            self.pause_douceur_indicator.configure(
                 text=f"Pause douceur: Actif ({remaining_time:.1f}s)",
-                fg=self.colors["highlight"]
+                text_color=self.colors["highlight"]
             )
         else:
             next_pause = max(0, 1000 - (self.game.human_score % 1000), 1000 - (self.game.ai_score % 1000))
-            self.pause_douceur_indicator.config(
+            self.pause_douceur_indicator.configure(
                 text=f"Pause douceur: Dans {next_pause} points",
-                fg=self.colors["text_normal"]
+                text_color=self.colors["text_normal"]
             )
         
         # Pièce rigolote
         next_funny = max(0, 3000 - (self.game.human_score % 3000), 3000 - (self.game.ai_score % 3000))
-        self.piece_rigolote_indicator.config(
+        self.piece_rigolote_indicator.configure(
             text=f"Pièce rigolote: Dans {next_funny} points",
-            fg=self.colors["text_normal"]
+            text_color=self.colors["text_normal"]
         )
         
         # Cadeau surprise
-        self.cadeau_indicator.config(
+        self.cadeau_indicator.configure(
             text=f"Cadeau surprise: 2 lignes = cadeau",
-            fg=self.colors["text_normal"]
+            text_color=self.colors["text_normal"]
         )
     
     def show_game_over(self, winner):
-        """Affiche l'écran de fin de partie
+        """Affiche l'écran de fin de partie avec effet 3D
         
         Args:
             winner: Le gagnant ("human" ou "ai")
@@ -731,35 +800,55 @@ class UI:
                 fill=color, outline=""
             )
         
-        # Effet de particules
-        for _ in range(50):
+        # Effet de particules pour un rendu 3D
+        for _ in range(100):
             x = random.randint(0, width)
             y = random.randint(0, height)
-            size = random.randint(3, 8)
-            color = random.choice(["#FFD700", "#FF6347", "#00BFFF", "#7FFF00"])
+            size = random.randint(2, 10)
+            color = random.choice(["#FFD700", "#FF6347", "#00BFFF", "#7FFF00", "#FFC0CB"])
+            
+            # Cercle avec dégradé pour effet 3D
             self.game_over_canvas.create_oval(
                 x, y, x + size, y + size,
-                fill=color, outline=""
+                fill=color, outline=self.lighten_color(color)
+            )
+            # Petit cercle blanc pour effet de reflet/brillance
+            self.game_over_canvas.create_oval(
+                x + size//4, y + size//4, x + size//2, y + size//2,
+                fill="#FFFFFF", outline=""
             )
         
         # Centre de l'écran
         center_x = width // 2
         center_y = height // 2
         
-        # Texte de game over
+        # Texte de game over avec effet d'ombre pour 3D
+        shadow_offset = 4
+        self.game_over_canvas.create_text(
+            center_x + shadow_offset, center_y - 120 + shadow_offset, 
+            text="GAME OVER", 
+            font=("Helvetica", 36, "bold"), 
+            fill="#000000"
+        )
         self.game_over_canvas.create_text(
             center_x, center_y - 120, 
             text="GAME OVER", 
-            font=self.game_over_font, 
+            font=("Helvetica", 36, "bold"), 
             fill="#FF5555"
         )
         
-        # Texte du gagnant
+        # Texte du gagnant avec effet d'ombre pour 3D
         winner_text = "Le joueur gagne !" if winner == "human" else "L'IA gagne !"
+        self.game_over_canvas.create_text(
+            center_x + shadow_offset, center_y - 40 + shadow_offset, 
+            text=winner_text, 
+            font=("Helvetica", 18, "bold"), 
+            fill="#000000"
+        )
         self.game_over_canvas.create_text(
             center_x, center_y - 40, 
             text=winner_text, 
-            font=self.section_font, 
+            font=("Helvetica", 18, "bold"), 
             fill="#F8F8F2"
         )
         
@@ -767,7 +856,7 @@ class UI:
         self.game_over_canvas.create_text(
             center_x, center_y + 20, 
             text=f"Joueur: {self.game.human_score} - IA: {self.game.ai_score}", 
-            font=self.score_font, 
+            font=("Helvetica", 14), 
             fill="#F8F8F2"
         )
         
@@ -775,34 +864,28 @@ class UI:
         self.game_over_canvas.create_text(
             center_x, center_y + 80, 
             text="Appuyez sur R pour recommencer", 
-            font=self.info_font, 
+            font=("Helvetica", 12), 
             fill="#BD93F9"
         )
         
-        # Cadre du bouton
-        button_frame = tk.Frame(
-            self.game_over_canvas,
-            bg="#BD93F9",
-            padx=2,
-            pady=2
-        )
-        button_window = self.game_over_canvas.create_window(center_x, center_y + 140, window=button_frame)
-        
-        # Bouton pour recommencer
-        restart_button = tk.Button(
-            button_frame, 
-            text="Recommencer", 
-            font=self.score_font,
-            bg="#6272A4",
-            fg="#F8F8F2",
-            padx=20,
-            pady=10,
-            relief=tk.FLAT,
-            activebackground="#7286B4",
-            activeforeground="#FFFFFF",
+        # Création du bouton avec CustomTkinter
+        restart_button = ctk.CTkButton(
+            self.root,
+            text="Recommencer",
+            font=ctk.CTkFont(family="Helvetica", size=14),
+            fg_color=self.colors["button_bg"],
+            text_color=self.colors["button_fg"],
+            hover_color=self.darken_color(self.colors["button_bg"], amount=0.1),
+            corner_radius=10,
+            border_width=2,
+            border_color=self.colors["accent"],
             command=self.game.restart_game
         )
-        restart_button.pack()
+        # Placement du bouton sur le canvas
+        button_window = self.game_over_canvas.create_window(
+            center_x, center_y + 140, 
+            window=restart_button
+        )
     
     def hide_game_over(self):
         """Cache l'écran de fin de partie"""

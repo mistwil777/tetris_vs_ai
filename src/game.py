@@ -17,9 +17,19 @@ from src.ui import UI
 class Game:
     """Classe principale qui gère le déroulement du jeu"""
     
-    def __init__(self):
-        """Initialise une nouvelle partie de Tetris"""
-        self.root = tk.Tk()
+    def __init__(self, use_custom_tkinter=False):
+        """Initialise une nouvelle partie de Tetris
+        
+        Args:
+            use_custom_tkinter: Booléen indiquant si on utilise CustomTkinter
+        """
+        # Utiliser CustomTkinter si demandé
+        if use_custom_tkinter:
+            import customtkinter as ctk
+            self.root = ctk.CTk()
+        else:
+            self.root = tk.Tk()
+            
         self.root.title("Tetris à deux joueurs (Humain vs IA)")
         self.root.configure(bg="#2C3E50")
         
